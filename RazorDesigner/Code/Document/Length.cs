@@ -1,6 +1,6 @@
 namespace Grains.RazorDesigner.Document;
 
-// No fr unit — sbox is flexbox, not CSS Grid; use FlexGrow for fractional sizing.
+// No fr unit: sbox is flexbox not CSS Grid. Use FlexGrow for fractional sizing.
 public readonly record struct Length( float Value, LengthUnit Unit )
 {
 	public static Length Auto => new( 0f, LengthUnit.Auto );

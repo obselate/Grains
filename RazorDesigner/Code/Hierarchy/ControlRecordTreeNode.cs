@@ -5,10 +5,6 @@ using Sandbox;
 
 namespace Grains.RazorDesigner.Hierarchy;
 
-// One row per ControlRecord. Container records recurse via BuildChildren so
-// the tree mirrors document nesting. When IsCanvasRoot is true the node is
-// the document's hidden RootRecord, rendered as "Canvas" with no Cut/Copy/
-// Delete affordances and no drag source.
 public sealed class ControlRecordTreeNode : TreeNode<ControlRecord>
 {
 	private const string LogPrefix = "[Grains.RazorDesigner]";
@@ -24,13 +20,7 @@ public sealed class ControlRecordTreeNode : TreeNode<ControlRecord>
 		IsCanvasRoot = isCanvasRoot;
 	}
 
-	// ClassName intentionally NOT included: the engine drives auto-rebuild via
-	// hash-change in TreeNode.Think (every ~100ms on visible nodes), and our
-	// BuildChildren only AddItems without clearing first — re-running it would
-	// duplicate children. ClassName edits use the surgical HierarchyPanel
-	// .NodeChanged path (just a TreeView.Update repaint). Type and Children
-	// .Count both go through DesignerWindow.RepopulateAndFocus which calls
-	// SetRoot + clears, so the auto-rebuild path is never hit there either.
+	// ClassName excluded: engine TreeNode.Think auto-rebuilds on hash change without clearing children first; BuildChildren would duplicate. Repaint via HierarchyPanel.NodeChanged instead.
 	public override int ValueHash => System.HashCode.Combine( Value?.Type, Value?.Children.Count, IsCanvasRoot );
 
 	protected override void BuildChildren()
@@ -154,8 +144,7 @@ public sealed class ControlRecordTreeNode : TreeNode<ControlRecord>
 		}
 	}
 
-	// Drop-onto a container appends as last child; drop above/below targets
-	// the sibling slot. Rejects drop-onto non-containers and sibling-of-Root.
+	// Drop-onto container appends; drop above/below targets sibling slot.
 	private bool TryComputeDropTarget( DesignerDocument doc, ItemEdge edge,
 		out ControlRecord newParent, out int index, out bool dropOnto )
 	{

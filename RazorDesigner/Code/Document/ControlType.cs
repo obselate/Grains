@@ -10,8 +10,7 @@ public enum ControlType
 	Layout,
 }
 
-// Per-type defaults applied at placement time. IconName is separate from Tag
-// because razor tag names (e.g. "textentry", "div") aren't registered icons.
+// IconName is separate from Tag: razor tag names (textentry, div) aren't registered icons.
 public sealed record ControlMeta(
 	string Tag,
 	string IconName,
@@ -24,11 +23,7 @@ public sealed record ControlMeta(
 
 public static class ControlMetadata
 {
-	// Defaults lean on idiomatic flex: Auto everywhere except leaves that need
-	// explicit pixel sizing to render (Image with no source, TextEntry input).
-	// Containers compose via flex-grow + parent's align-items: stretch, so
-	// saved scss stays clean — Auto values are silent in GenerateSavedScss.
-	// Empty containers stay visible in preview via min-height: 32px floor.
+	// Auto-sized except leaves needing explicit px (Image, TextEntry). Auto values are silent in saved scss.
 	public static ControlMeta Get( ControlType type ) => type switch
 	{
 		ControlType.Panel     => new( "div",       "crop_square",  Length.Auto,    Length.Auto,    "",            "", 1f, IsContainer: true ),

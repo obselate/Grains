@@ -4,9 +4,6 @@ using Sandbox;
 
 namespace Grains.RazorDesigner.Hierarchy;
 
-// Left-sidebar tree view. Knows nothing about palette/canvas/document/selection
-// — DesignerWindow is the integration seam. Window calls SetRoot after every
-// document mutation; tree fires events back via the Notify* internals.
 public sealed class HierarchyPanel : Widget
 {
 	private const string LogPrefix = "[Grains.RazorDesigner]";
@@ -17,8 +14,7 @@ public sealed class HierarchyPanel : Widget
 	public System.Action<ControlRecord> RecordCreated;
 	public System.Action<ControlRecord> RecordCutRequested;
 	public System.Action<ControlRecord> RecordCopyRequested;
-	// Argument may be RootRecord — Canvas-root context menu shows Paste only
-	// when clipboard is non-empty. Window decides insertion point.
+	// Argument may be RootRecord. Window decides insertion point.
 	public System.Action<ControlRecord> RecordPasteRequested;
 
 	private readonly DesignerDocument _document;
@@ -82,10 +78,7 @@ public sealed class HierarchyPanel : Widget
 		}
 	}
 
-	// Surgical: triggers a TreeView repaint after an in-place ControlRecord
-	// mutation (e.g. ClassName rename). ControlRecordTreeNode.OnPaint reads
-	// Value.ClassName directly, so the new label appears on the next paint
-	// without rebuilding the tree.
+	// Repaint after in-place mutation; OnPaint reads Value directly so no rebuild needed.
 	public void NodeChanged( ControlRecord record )
 	{
 		if ( record is null ) return;

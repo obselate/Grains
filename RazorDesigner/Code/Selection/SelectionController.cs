@@ -3,10 +3,7 @@ using Sandbox;
 
 namespace Grains.RazorDesigner.Selection;
 
-// Tracks zero-or-one selected ControlRecord. Hit-test walks the document
-// tree depth-first parent-before-children; the LAST hit wins, giving
-// child-over-parent precedence on overlap (a Button inside a Layout is
-// selected over the Layout). Selection visual is the ".selected" CSS class.
+// Hit-test: last hit wins (child-over-parent on overlap). Selection visual is .selected CSS class.
 public sealed class SelectionController
 {
 	private const string LogPrefix = "[Grains.RazorDesigner]";
@@ -21,8 +18,7 @@ public sealed class SelectionController
 		_document = document;
 	}
 
-	// MouseEvent.LocalPosition is widget LOGICAL pixels; Panel.IsInside
-	// expects framebuffer pixels (= logical * DpiScale).
+	// MouseEvent.LocalPosition is logical px; Panel.IsInside expects framebuffer (logical * DpiScale).
 	public bool TrySelectAt( float widgetX, float widgetY, float dpiScale )
 	{
 		if ( dpiScale < 0.01f ) dpiScale = 1f;
@@ -44,7 +40,7 @@ public sealed class SelectionController
 			return true;
 		}
 
-		Log.Info( $"{LogPrefix} TrySelectAt widget=({widgetX:F0},{widgetY:F0}) fb=({fbPos.x:F0},{fbPos.y:F0}) miss — {checkedCount} record(s) checked" );
+		Log.Info( $"{LogPrefix} TrySelectAt widget=({widgetX:F0},{widgetY:F0}) fb=({fbPos.x:F0},{fbPos.y:F0}) miss, {checkedCount} record(s) checked" );
 		Deselect();
 		return false;
 	}

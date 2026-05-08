@@ -3,32 +3,19 @@ using Sandbox;
 
 namespace Grains.RazorDesigner.Document;
 
-// Tree rooted at RootRecord — a hidden Layout-typed record that can never be
-// deleted. Monotonic per-type counters never reuse class-name suffixes
-// (deleting panel1 + adding a new Panel produces panel2).
-//
-// Mirror invariant: LivePanel is owned by DesignerWindow.MirrorRecord. Add
-// does NOT create one; Remove and Clear DO destroy any existing live mirrors.
-// Hotload-induced canvas rebuilds break LivePanel references transiently —
-// the window must call RepopulateMirror after canvas reconstruction.
 public sealed class DesignerDocument
 {
 	private const string LogPrefix = "[Grains.RazorDesigner]";
 
 	private readonly Dictionary<ControlType, int> _counters = new();
 
-	// Single-slot clipboard for hierarchy cut/copy/paste. Cut stores the
-	// detached source; Copy stores a fresh clone (snapshot semantics — edits
-	// to the source post-copy must not bleed into pastes). Paste re-clones.
+	// Cut detaches; Copy stores a fresh clone (snapshot); Paste re-clones.
 	public ControlRecord Clipboard { get; set; }
 
-	// isRoot sentinel: DocumentSerializer treats this ClassName as the
-	// document root (flat .root rule, no flex-grow/shrink/basis emission);
-	// InspectorPanel hides ClassName edit + flex-self props for it.
+	// isRoot sentinel. Serializer/Inspector branch on this.
 	public const string RootClassName = "root";
 
-	// Hidden Layout-typed root; never yielded by WalkAll, never deletable,
-	// never a hierarchy entry.
+	// Hidden; never yielded by WalkAll, never deletable.
 	public ControlRecord RootRecord { get; } = new ControlRecord
 	{
 		Type = ControlType.Layout,
@@ -79,7 +66,7 @@ public sealed class DesignerDocument
 		if ( RootRecord.Children.Remove( record ) )
 		{
 			DeleteLivePanelsRecursive( record );
-			Log.Info( $"{LogPrefix} Document.Remove({record.ClassName}) — was root child (now {RootRecord.Children.Count} root child(ren))" );
+			Log.Info( $"{LogPrefix} Document.Remove({record.ClassName}): was root child (now {RootRecord.Children.Count} root child(ren))" );
 			return true;
 		}
 
@@ -87,19 +74,16 @@ public sealed class DesignerDocument
 		if ( parent is not null && parent.Children.Remove( record ) )
 		{
 			DeleteLivePanelsRecursive( record );
-			Log.Info( $"{LogPrefix} Document.Remove({record.ClassName}) — was child of {parent.ClassName}" );
+			Log.Info( $"{LogPrefix} Document.Remove({record.ClassName}): was child of {parent.ClassName}" );
 			return true;
 		}
 
-		Log.Warning( $"{LogPrefix} Document.Remove({record.ClassName}) — not found in tree" );
+		Log.Warning( $"{LogPrefix} Document.Remove({record.ClassName}): not found in tree" );
 		return false;
 	}
 
-	// Same-parent reorder and cross-parent reparent are the same operation.
-	// Index is interpreted in the AFTER-removal list, so passing the original
-	// index of a later-positioned record yields a no-op move; callers should
-	// pass the user-visible target index — this method handles the shift.
-	// LivePanel is NOT touched; caller refreshes the live mirror.
+	// `index` is the user-visible target; this method handles the post-removal shift.
+	// LivePanel is not touched; caller refreshes the mirror.
 	public bool MoveTo( ControlRecord record, ControlRecord newParent, int index )
 	{
 		if ( record is null )
@@ -124,7 +108,7 @@ public sealed class DesignerDocument
 		}
 		if ( newParent == record || IsDescendant( record, newParent ) )
 		{
-			Log.Warning( $"{LogPrefix} Document.MoveTo({record.ClassName}): cycle — newParent {newParent.ClassName} is record or its descendant" );
+			Log.Warning( $"{LogPrefix} Document.MoveTo({record.ClassName}): cycle. newParent {newParent.ClassName} is record or its descendant" );
 			return false;
 		}
 
@@ -170,7 +154,7 @@ public sealed class DesignerDocument
 		Log.Info( $"{LogPrefix} Document.Clear (counters reset; RootRecord retained)" );
 	}
 
-	// Depth-first, parent before children. RootRecord is NOT yielded.
+	// Depth-first, parent before children. RootRecord is not yielded.
 	public IEnumerable<ControlRecord> WalkAll()
 	{
 		foreach ( var r in RootRecord.Children )
@@ -191,8 +175,7 @@ public sealed class DesignerDocument
 		}
 	}
 
-	// Direct children of RootRecord return RootRecord. RootRecord itself
-	// returns null — it's the only record without a parent.
+	// RootRecord itself returns null (only record without a parent).
 	public ControlRecord FindParent( ControlRecord child )
 	{
 		if ( child is null || child == RootRecord ) return null;
@@ -218,10 +201,7 @@ public sealed class DesignerDocument
 		return null;
 	}
 
-	// Returns the deepest container whose LivePanel contains fbPos. Seeded
-	// with RootRecord so the result is always non-null even when no inner
-	// container matches. WalkAll yields parents before children, so the
-	// last hit is the deepest.
+	// WalkAll yields parents-before-children, so the last hit is the deepest. Seeded with RootRecord.
 	public ControlRecord FindDeepestContainerAt( Vector2 fbPos )
 	{
 		ControlRecord deepest = RootRecord;
@@ -235,8 +215,7 @@ public sealed class DesignerDocument
 		return deepest;
 	}
 
-	// Deep-clone the subtree. LivePanel is NOT cloned. Caller inserts into
-	// the tree and refreshes the mirror.
+	// Deep-clone subtree. LivePanel is not cloned; caller inserts and refreshes mirror.
 	public ControlRecord Clone( ControlRecord source )
 	{
 		if ( source is null ) return null;
@@ -265,9 +244,7 @@ public sealed class DesignerDocument
 		return clone;
 	}
 
-	// User-renamed records can occupy slots the monotonic counter would
-	// otherwise mint (rename panel1 -> panel5 with no other panels; counter
-	// eventually hits 5 and collides). Walk past in-use names.
+	// Walk past in-use names: a user rename (panel1 -> panel5) can occupy a slot the counter will mint later.
 	private string MintClassName( ControlType type )
 	{
 		var prefix = ControlMetadata.ClassNamePrefix( type );

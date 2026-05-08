@@ -6,28 +6,7 @@ using Sandbox.UI;
 
 namespace Grains.RazorDesigner.Canvas;
 
-// Editor-side preview scene hosting a CameraComponent + ScreenPanel inside an
-// editor-flavoured Scene so we can render UI from a SceneRenderingWidget
-// without going through a running game.
-//
-// CreateEditorScene + EditorTick (not new Scene + GameTick): every official
-// sbox preview tool uses CreateEditorScene + EditorTick. GameTick on a
-// non-editor scene runs SceneNetworkUpdate + game-only plumbing every frame.
-//
-// ScreenPanel is sealed and doesn't implement ExecuteInEditor, so under
-// IsEditor=true the Component.ShouldExecute gate prevents OnAwake AND
-// OnDestroy from being scheduled. ForceLifecycle bridges startup;
-// ForceTeardown bridges cleanup (without it, the GameRootPanel stays in
-// UISystem.RootPanels forever — one leak per dock open / refresh / hotload).
-//
-// Root-isolation (TryIsolateRootFromMenuPump): the menu pump's
-// UISystem.PreLayout iterates ALL registered roots and calls PreLayout with
-// the engine swap-chain rect, which makes our preview lay out at engine-screen
-// dimensions, not widget dimensions. We can't override RootPanel.UpdateBounds
-// / UpdateScale (GameRootPanel + ScreenPanel are sealed), so we reflectively
-// remove our root from UISystem.RootPanels and drive layout ourselves each
-// frame. Render still works because ScreenPanel.Render calls
-// rootPanel.RenderManual() — public and doesn't require UISystem participation.
+// bd memories: screenpanel-force-lifecycle, stylesheet-restyle-bug. CLAUDE.md verified facts #1-#7.
 public sealed class DesignerScene : IDisposable
 {
 	private const string LogPrefix = "[Grains.RazorDesigner]";
@@ -89,8 +68,7 @@ public sealed class DesignerScene : IDisposable
 		}
 	}
 
-	// Call BEFORE Scene.Destroy() so the component still has a valid scene
-	// context while it tears down.
+	// Call BEFORE Scene.Destroy(); component needs a valid scene to tear down.
 	private static void ForceTeardown( Component component )
 	{
 		if ( component is null ) return;
@@ -156,7 +134,7 @@ public sealed class DesignerScene : IDisposable
 			}
 
 			removeRoot.Invoke( uiSystem, new object[] { root } );
-			Log.Info( $"{LogPrefix} IsolateRoot: removed from UISystem.RootPanels — engine layout pump will skip it" );
+			Log.Info( $"{LogPrefix} IsolateRoot: removed from UISystem.RootPanels (engine layout pump will skip it)" );
 			return true;
 		}
 		catch ( Exception ex )
@@ -172,13 +150,7 @@ public sealed class DesignerScene : IDisposable
 		catch { return null; }
 	}
 
-	// Scale = DpiScale keeps CSS authoring in logical pixels — Length.Pixels(24)
-	// renders at 24 logical px regardless of OS display scaling. PanelBounds is
-	// in framebuffer space (camera presents to Size * DpiScale).
-	//
-	// BuildDescriptors must run after Layout: RenderManual calls BuildCommandList,
-	// which consumes descriptors from BuildDescriptors. UISystem.Simulate
-	// normally runs both; we mirror that since we opted out of Simulate.
+	// BuildDescriptors must run after Layout (RenderManual consumes its output).
 	private void DriveLayout( Panel root, float widthPx, float heightPx, float dpiScale )
 	{
 		if ( widthPx < 1f || heightPx < 1f ) return;
@@ -220,8 +192,7 @@ public sealed class DesignerScene : IDisposable
 		}
 	}
 
-	// Walk up the type hierarchy because the methods we want are internal to
-	// RootPanel base, not declared on concrete GameRootPanel.
+	// Walk up: methods we want are on RootPanel base, not concrete GameRootPanel.
 	private static MethodInfo ResolveMethod( Type startType, string name, Type[] paramTypes )
 	{
 		for ( var t = startType; t is not null; t = t.BaseType )
@@ -272,9 +243,6 @@ public sealed class DesignerScene : IDisposable
 	{
 		Log.Info( $"{LogPrefix} DesignerScene.Dispose" );
 
-		// ForceTeardown calls rootPanel.Delete() which runs OnDeleted →
-		// RemoveRoot. No-op if isolation already removed us; still needed
-		// for the path where isolation failed.
 		ForceTeardown( ScreenPanel );
 
 		Scene?.Destroy();

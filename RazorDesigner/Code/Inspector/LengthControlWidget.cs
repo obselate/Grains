@@ -4,16 +4,8 @@ using Sandbox;
 
 namespace Grains.RazorDesigner.Inspector;
 
-// Numeric LineEdit + engine EnumControlWidget for the Length struct. Length is
-// a readonly record struct so we can't use TryGetAsObject sub-property routing
-// the way MarginControlWidget / VectorControlWidget do — we read/write the
-// whole struct via SerializedProperty.GetValue<Length> / SetValue.
-//
-// Engine EnumControlWidget needs a SerializedProperty pointing at an enum.
-// Length doesn't expose Unit through SerializedProperty (struct fields don't
-// decompose), so we sit a tiny POCO proxy in front of LengthUnit, hand its
-// serialized property to EnumControlWidget, and round-trip changes through
-// our own OnUnitProxyChanged → SerializedProperty.SetValue<Length> path.
+// CustomEditor for Length (readonly record struct). UnitProxy hosts a LengthUnit
+// property so EnumControlWidget has a SerializedProperty to bind to.
 [CustomEditor( typeof( Length ) )]
 public sealed class LengthControlWidget : ControlWidget
 {
@@ -23,17 +15,9 @@ public sealed class LengthControlWidget : ControlWidget
 	private EnumControlWidget _unitWidget;
 	private UnitProxy _unitProxy;
 	private SerializedObject _unitSerialized;
-	// Re-entrancy guard. Both the proxy SerializedObject and the outer
-	// SerializedProperty fire change events synchronously inside SetValue,
-	// so a one-shot push from either side would otherwise loop:
-	//   user picks unit → proxy.OnPropertyChanged → outer.SetValue →
-	//   our OnValueChanged → SyncFromProperty → proxy.SetValue (no-op) →
-	//   proxy.OnPropertyChanged → ...
+	// Synchronous change events on both sides; without this guard SetValue would loop.
 	private bool _syncing;
 
-	// POCO whose only job is to host a LengthUnit property that
-	// EditorTypeLibrary.GetSerializedObject can reflect on, producing a
-	// SerializedProperty we can hand to EnumControlWidget.
 	private sealed class UnitProxy
 	{
 		public LengthUnit Unit { get; set; }
@@ -57,12 +41,7 @@ public sealed class LengthControlWidget : ControlWidget
 		_unitSerialized = EditorTypeLibrary.GetSerializedObject( _unitProxy );
 		var unitProp = _unitSerialized.GetProperty( nameof( UnitProxy.Unit ) );
 		_unitWidget = new EnumControlWidget( unitProp );
-		// EnumControlWidget.PaintControl draws label LeftCenter and the
-		// dropdown chevron RightCenter inside the same rect (after an 8px
-		// horizontal shrink). The chevron reserves ~17px on the right; we
-		// need the rect wide enough for the longest entry ("Percent" — 7
-		// chars) plus the chevron without overlap. ~96px clears it on
-		// every theme density we've observed.
+		// 96px clears longest entry ("Percent") + chevron without overlap.
 		_unitWidget.MinimumWidth = 96;
 		_unitWidget.MaximumWidth = 96;
 		_unitSerialized.OnPropertyChanged += OnUnitProxyChanged;
@@ -82,9 +61,7 @@ public sealed class LengthControlWidget : ControlWidget
 
 			_valueEdit.Text = len.Value.ToString( "0.###" );
 
-			// Push the unit through the proxy SerializedProperty so the
-			// EnumControlWidget repaints with the new selection — direct
-			// _unitProxy.Unit assignment would bypass the change event.
+			// Push through SerializedProperty so EnumControlWidget repaints; direct field assignment skips the event.
 			var unitProp = _unitSerialized.GetProperty( nameof( UnitProxy.Unit ) );
 			unitProp.SetValue( len.Unit );
 
@@ -133,8 +110,7 @@ public sealed class LengthControlWidget : ControlWidget
 
 		if ( !float.TryParse( _valueEdit.Text, out var parsed ) )
 		{
-			// Bad input: restore the field, do NOT commit (avoids spurious
-			// no-op undo entry + ValueChanged signal).
+			// Restore on bad input; don't commit (avoids spurious undo entry + ValueChanged).
 			_valueEdit.Text = current.Value.ToString( "0.###" );
 			Log.Info( $"{LogPrefix} LengthControlWidget OnValueEditFinished: parse failed, restored to {current.Value}" );
 			return;
@@ -155,11 +131,4 @@ public sealed class LengthControlWidget : ControlWidget
 		base.OnValueChanged();
 		SyncFromProperty();
 	}
-
-	// No OnPaint override on purpose: base ControlWidget.OnPaint paints the
-	// canonical gray Theme.ControlBackground pill, and the transparent
-	// LineEdit lets it show through (matching StringControlWidget's pattern).
-	// MarginControlWidget overrides OnPaint to no-op because each child is
-	// itself a FloatControlWidget that paints its own pill — that doesn't
-	// apply here.
 }

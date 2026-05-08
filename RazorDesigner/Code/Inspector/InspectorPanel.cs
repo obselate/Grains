@@ -4,39 +4,20 @@ using Sandbox;
 
 namespace Grains.RazorDesigner.Inspector;
 
-// Right-sidebar property editor bound to the currently-selected ControlRecord.
-// Mutates the record in place via the engine ControlSheet/ControlWidget
-// machinery; fires ValueChanged after any cheap edit (window re-applies the
-// preview stylesheet) or ClassNameChanged after a successful ClassName commit
-// (window swaps the LivePanel CSS class surgically — the panel is still the
-// same instance, only its class membership changed).
-//
-// SetTarget(null) renders a "No selection" placeholder — edits-while-deselected
-// were silently retargeting to RootRecord, so a Width keystroke after a canvas
-// miss-click would mutate the canvas instead of the just-deselected button.
-// Canvas inspector remains reachable by clicking the Canvas row in the
-// hierarchy (passes RootRecord explicitly).
-//
-// FlexGrow/Shrink/Basis are hidden on RootRecord (no parent flex container).
 public sealed class InspectorPanel : Widget
 {
 	private const string LogPrefix = "[Grains.RazorDesigner]";
 
 	public System.Action ValueChanged;
-	// Fired AFTER a ClassName commit succeeds. Args: (record, oldClassName).
-	// Surgical path — DesignerWindow swaps the LivePanel class and refreshes
-	// the hierarchy row without rebuilding the mirror or the tree.
+	// (record, oldClassName). Surgical: caller swaps LivePanel class + repaints tree.
 	public System.Action<ControlRecord, string> ClassNameChanged;
 
 	private readonly DesignerDocument _document;
 	private ControlRecord _target;
 	private SerializedObject _serialized;
 	private string _priorClassName;
-	// Tracked so HandleClassNameChange can update the header in place after
-	// a successful rename without rebuilding the whole sheet.
 	private Label _headerLabel;
-	// Set while pushing a rejected ClassName edit back through SetValue —
-	// guards against OnFinishEdit re-entry yanking us into a recursive revert.
+	// Re-entry guard: SetValue on rejected edit fires OnFinishEdit again.
 	private bool _isRevertingClassName;
 
 	public InspectorPanel( Widget parent, DesignerDocument document ) : base( parent )
@@ -59,7 +40,7 @@ public sealed class InspectorPanel : Widget
 
 	private void Rebuild()
 	{
-		// Unwire prior _serialized — orphaned instance still holds delegate refs.
+		// Unwire prior _serialized: orphaned instance still holds delegate refs.
 		if ( _serialized is not null )
 		{
 			_serialized.OnPropertyChanged -= OnPropertyChanged;
@@ -86,12 +67,7 @@ public sealed class InspectorPanel : Widget
 		_serialized = EditorTypeLibrary.GetSerializedObject( _target );
 		_serialized.OnPropertyChanged += OnPropertyChanged;
 
-		// ClassName edits go through validation + a LivePanel CSS class swap
-		// in DesignerWindow, so we MUST defer to commit-time (per-keystroke
-		// would thrash through invalid intermediate names). Hook the
-		// ClassName property's OnFinishEdit (fires from PropertyFinishEdit
-		// on focus loss / Enter) instead of OnPropertyChanged (fires per
-		// keystroke from StringControlWidget.OnEdited).
+		// ClassName: commit-time only. OnFinishEdit fires on focus loss/Enter, not per keystroke.
 		var classNameProp = _serialized.GetProperty( "ClassName" );
 		if ( classNameProp is not null )
 			classNameProp.OnFinishEdit += OnClassNameFinishEdit;
@@ -107,13 +83,11 @@ public sealed class InspectorPanel : Widget
 			if ( isContainer && p.Name == "Content" )
 				return false;
 
-			// FlexGrow/Shrink/Basis are per-child flex props — meaningless on
-			// RootRecord, which has no parent flex container.
+			// FlexGrow/Shrink/Basis are per-child props; RootRecord has no parent flex container.
 			if ( isRoot && p.Name is "FlexGrow" or "FlexShrink" or "FlexBasis" )
 				return false;
 
-			// RootRecord.ClassName "root" is the isRoot sentinel — hide so the
-			// user can't reach it (renaming would break selector emission).
+			// RootClassName is the isRoot sentinel; renaming would break serializer.
 			if ( isRoot && p.Name == "ClassName" )
 				return false;
 
@@ -126,9 +100,7 @@ public sealed class InspectorPanel : Widget
 
 	private void OnPropertyChanged( SerializedProperty property )
 	{
-		// ClassName is handled on commit via OnClassNameFinishEdit — its
-		// mid-edit value can't propagate to the preview anyway because CSS
-		// class membership on LivePanel is fixed at MirrorRecord time.
+		// ClassName handled on commit via OnClassNameFinishEdit.
 		if ( property.Name == "ClassName" )
 			return;
 
@@ -143,9 +115,7 @@ public sealed class InspectorPanel : Widget
 
 	private void HandleClassNameChange()
 	{
-		// Defensive: queued OnFinishEdit could race in mid-rebuild.
 		if ( _target is null ) return;
-		// Re-entry from the surgical revert path below.
 		if ( _isRevertingClassName ) return;
 
 		var newName = _target.ClassName;
@@ -155,13 +125,9 @@ public sealed class InspectorPanel : Widget
 		var error = ValidateClassName( newName, _target );
 		if ( error is not null )
 		{
-			Log.Warning( $"{LogPrefix} Inspector.ClassName '{newName}' rejected: {error} — reverting to '{_priorClassName}'" );
+			Log.Warning( $"{LogPrefix} Inspector.ClassName '{newName}' rejected: {error} -> reverting to '{_priorClassName}'" );
 
-			// Surgical revert: push prior value through SerializedProperty so
-			// the bound LineEdit re-syncs via StringControlWidget.OnValueChanged
-			// (engine StringControlWidget.cs:66-79) without tearing down the
-			// whole ControlSheet. Saves ~3 LengthControlWidget ctors per
-			// rejection vs. full Rebuild().
+			// bd memory: engine-stringcontrolwidget-onvalue. SetValue re-syncs LineEdit on focus loss.
 			_isRevertingClassName = true;
 			try
 			{
@@ -193,9 +159,7 @@ public sealed class InspectorPanel : Widget
 		return $"{_target.Type}: {_target.ClassName}";
 	}
 
-	// Returns null on success, otherwise a short failure reason. The root
-	// sentinel (DesignerDocument.RootClassName) is reserved. Identifier shape:
-	// starts with letter or underscore, contains only [letters, digits, _, -].
+	// Returns null on success, else a short failure reason.
 	private string ValidateClassName( string name, ControlRecord self )
 	{
 		if ( string.IsNullOrWhiteSpace( name ) )
@@ -223,7 +187,7 @@ public sealed class InspectorPanel : Widget
 
 	private bool CollidesWithAnyOther( string name, ControlRecord self )
 	{
-		// RootRecord is excluded from WalkAll; check it separately.
+		// RootRecord is excluded from WalkAll.
 		if ( _document.RootRecord != self && _document.RootRecord.ClassName == name )
 			return true;
 		foreach ( var r in _document.WalkAll() )

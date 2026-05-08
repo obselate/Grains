@@ -4,8 +4,7 @@ using Sandbox;
 
 namespace Grains.RazorDesigner.Canvas;
 
-// Inherits SceneRenderingWidget directly (same shape as ShaderGraph's
-// PreviewPanel) so we can override PreFrame to advance the scene.
+// Same shape as ShaderGraph PreviewPanel: override PreFrame to advance the scene.
 public class DesignerCanvas : SceneRenderingWidget
 {
 	private const string LogPrefix = "[Grains.RazorDesigner]";
@@ -74,15 +73,11 @@ public class DesignerCanvas : SceneRenderingWidget
 
 		using ( _designerScene.Scene.Push() )
 		{
-			// EditorTick is the canonical preview-scene tick. GameTick would
-			// run SceneNetworkUpdate + game-only plumbing every frame.
+			// EditorTick (not GameTick): preview scene, no SceneNetworkUpdate / fixed physics.
 			_designerScene.Scene.EditorTick( RealTime.Now, RealTime.Delta );
 		}
 
-		// SceneRenderingWidget.RenderScene presents to a framebuffer of
-		// Size * DpiScale, so layout has to happen in framebuffer-pixel space.
-		// We set Scale = DpiScale in DesignerScene so authoring stays in
-		// logical px (font-size: 24 reads as 24 logical px regardless of OS).
+		// Layout in framebuffer space (Size * DpiScale); DesignerScene sets Scale = DpiScale so authoring stays in logical px.
 		_designerScene.Update( Size.x, Size.y, DpiScale );
 	}
 

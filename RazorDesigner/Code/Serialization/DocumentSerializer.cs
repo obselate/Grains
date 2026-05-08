@@ -4,36 +4,16 @@ using Grains.RazorDesigner.Document;
 
 namespace Grains.RazorDesigner.Serialization;
 
-// Pure functions — no Sandbox engine calls. Iterates RootRecord.Children and
-// recurses; container records nest children, leaves emit a single tag. SCSS
-// emits width/height (Length.ToCss()) and flex props.
 public static class DocumentSerializer
 {
     private const int SchemaVersion = 2;
 
-    // `outline` shorthand in Sandbox.UI only accepts solid (dashed and
-    // outline-offset are rejected with console warnings).
+    // Sandbox.UI outline shorthand only accepts 'solid'.
     private const string SelectionRule =
         ".selected { outline: 2px solid #3FA9F5; }";
 
-    // Preview-only marker styles. Saved .razor instantiates real
-    // Sandbox.UI.Button / TextEntry / Image with their canonical styling, so
-    // these rules are intentionally NOT included in GenerateSavedScss output —
-    // pollution of the user's .razor.scss with preview shims would be wrong.
-    //
-    // Sandbox.UI's border parser only recognises 'none' and 'solid' (not
-    // dashed/dotted/double), so all border declarations here are 'solid'.
-    //
-    // .preview-panel and .preview-layout floor min-height: 32px so empty
-    // Auto-height containers stay visible — the saved scss can't have this
-    // floor (it would change user-saved layout) so it's preview-only.
-    //
-    // .preview-chrome-label uses position: absolute to take it OUT of the
-    // parent's flex flow (so it doesn't shift user-placed siblings, and isn't
-    // shifted by the parent's user-defined justify/align). For that to scope
-    // to the direct parent, .preview-panel and .preview-layout MUST declare
-    // position: relative — otherwise Yoga walks the cascade to <root> and the
-    // chrome label fills the entire preview canvas.
+    // Preview-only; NOT emitted into saved .razor.scss. .preview-panel/.preview-layout
+    // need position:relative so .preview-chrome-label's absolute positioning scopes to them, not <root>.
     private const string PreviewMarkerRules =
         ".preview-button { " +
             "background-color: rgba(60, 60, 80, 0.85); " +
@@ -155,8 +135,7 @@ public static class DocumentSerializer
         var inner = indent + "    ";
         var body = BuildRuleBody( r, meta, inner );
 
-        // .root is compound with the MyMenu wrapper, not a descendant —
-        // `MyMenu .root .child` wouldn't match. Keep flat.
+        // .root is compound with the wrapper class, not a descendant; emit flat.
         var isRoot = r.ClassName == DesignerDocument.RootClassName;
 
         if ( isRoot )
@@ -190,7 +169,6 @@ public static class DocumentSerializer
 
     private static StringBuilder BuildRuleBody( ControlRecord r, ControlMeta meta, string inner )
     {
-        // Buffer so EmitRuleTree can skip empty-body records.
         var body = new StringBuilder();
 
         if ( r.Width.Unit != LengthUnit.Auto )
@@ -200,11 +178,10 @@ public static class DocumentSerializer
 
         var isRoot = r.ClassName == DesignerDocument.RootClassName;
 
-        // RootRecord has no parent flex container — flex-grow/shrink/basis on
-        // root are meaningless.
+        // Skip flex-self props on root: no parent flex container.
         if ( !isRoot )
         {
-            // Guard against engine defaults (grow=0, shrink=1), not our creation hints.
+            // Guards: engine defaults (grow=0, shrink=1), not creation hints.
             if ( r.FlexGrow != 0f )
                 body.AppendLine( $"{inner}flex-grow: {r.FlexGrow.ToString( "0.##", CultureInfo.InvariantCulture )};" );
             if ( r.FlexShrink != 1f )
@@ -215,7 +192,7 @@ public static class DocumentSerializer
 
         if ( meta.IsContainer )
         {
-            // Engine effective defaults (YogaWrapper): direction=Row, justify=FlexStart, align=Stretch.
+            // YogaWrapper engine defaults: direction=Row, justify=Start, align=Stretch.
             if ( r.Direction != FlexDirection.Row )
                 body.AppendLine( $"{inner}flex-direction: {Css( r.Direction )};" );
             if ( r.Justify != JustifyContent.Start )
@@ -224,9 +201,7 @@ public static class DocumentSerializer
                 body.AppendLine( $"{inner}align-items: {Css( r.Align )};" );
             if ( r.Gap > 0f )
                 body.AppendLine( $"{inner}gap: {Px( r.Gap )};" );
-            // Auto skip: Sandbox UI has no padding-auto codepath (YogaWrapper has
-            // no SetPaddingAuto callback) — emitting it would be invalid CSS.
-            // 0px skip: matches engine effective default for minimal output.
+            // Skip Auto (no padding-auto codepath in Sandbox.UI) and 0px (engine default).
             if ( r.Padding.Unit != LengthUnit.Auto && !( r.Padding.Unit == LengthUnit.Px && r.Padding.Value == 0f ) )
                 body.AppendLine( $"{inner}padding: {r.Padding.ToCss()};" );
             if ( r.Wrap != FlexWrap.NoWrap )

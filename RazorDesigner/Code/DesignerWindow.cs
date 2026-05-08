@@ -23,24 +23,8 @@ public class DesignerWindow : Widget
 	private DesignerDocument _document;
 	private SelectionController _selection;
 	private string _trackedPath;
-	// Cached CSS string from the last successful StyleSheet.Parse so we can
-	// skip the engine-side reconcile when nothing about the document state
-	// affects the stylesheet (e.g. Content edits, which are razor markup not
-	// CSS). Measured: 3-second typing burst into Content fired 110 identical
-	// 1479-char applies; the parse cost is the only meaningful work, and on
-	// identical input the result is a no-op.
 	private string _lastAppliedCss;
-	// Reference to the sheet we last attached to root, kept so we can
-	// Remove(sheet) by reference next Apply. We CANNOT use root.StyleSheet.Parse
-	// here: Parse calls Remove("string") which filters by `x.FileName != null
-	// && x.FileName.WildcardMatch(...)`, but StyleSheet.FromString never sets
-	// FileName (only FromFile does — see engine StyleSheet.cs vs
-	// StyleParser.Sheet.cs). So Parse's Remove is a no-op on FromString sheets,
-	// and every Apply leaks the previous sheet. Five Applies on .button1 →
-	// five .button1 blocks all matching, all with the same within-sheet
-	// LoadOrder, and StyleOrderer's sort is unstable on tied scores — so the
-	// "winning" rule for cascade is essentially random. Tracking by reference
-	// + Remove(StyleSheet) skips the FileName check entirely.
+	// bd memory: stylesheet-leak. Track sheet by ref; Remove(string) is a no-op on FromString sheets.
 	private StyleSheet _previewSheet;
 
 	public DesignerWindow( Widget parent ) : base( parent )
@@ -99,8 +83,7 @@ public class DesignerWindow : Widget
 		_hierarchy.RecordCopyRequested += OnHierarchyCopyRequested;
 		_hierarchy.RecordPasteRequested += OnHierarchyPasteRequested;
 
-		// FocusMode enum has no StrongFocus; TabOrClickOrWheel is the equivalent
-		// and is required for the dock to receive Delete keypresses.
+		// TabOrClickOrWheel is required for the dock to receive Delete keypresses.
 		FocusMode = FocusMode.TabOrClickOrWheel;
 
 		Build();
@@ -118,10 +101,7 @@ public class DesignerWindow : Widget
 	private void Build()
 	{
 		Log.Info( $"{LogPrefix} Build: rebuilding canvas" );
-		// New canvas = new RootPanel = empty StyleSheet. The cached CSS
-		// belongs to the old root, so the next ApplyPreviewStylesheet must
-		// actually parse, not early-exit on string equality. Also drop the
-		// tracked sheet — it was attached to the old root.
+		// New canvas = new RootPanel = empty StyleSheet; drop caches tied to old root.
 		_lastAppliedCss = null;
 		_previewSheet = null;
 		_canvasHost.Clear( true );
@@ -134,8 +114,6 @@ public class DesignerWindow : Widget
 		RepopulateMirror();
 	}
 
-	// StyleSheet.Parse REPLACES the existing rule set, so re-parsing the full
-	// document each time is correct — no clear step needed.
 	private void ApplyPreviewStylesheet()
 	{
 		var canvas = Canvas;
@@ -146,7 +124,7 @@ public class DesignerWindow : Widget
 		var css = DocumentSerializer.GeneratePreviewStylesheet( _document );
 		if ( css == _lastAppliedCss )
 		{
-			Log.Info( $"{LogPrefix} ApplyPreviewStylesheet ({css.Length} chars) — unchanged, skipped" );
+			Log.Info( $"{LogPrefix} ApplyPreviewStylesheet ({css.Length} chars): unchanged, skipped" );
 			return;
 		}
 		Log.Info( $"{LogPrefix} ApplyPreviewStylesheet ({css.Length} chars)" );
@@ -158,18 +136,7 @@ public class DesignerWindow : Widget
 		_previewSheet = StyleSheet.FromString( css, "preview" );
 		root.StyleSheet.Add( _previewSheet );
 
-		// Remove+Add only invalidate broadphase on descendants (null StyleBlocks)
-		// and dirty the OWNER's PanelStyle. They do NOT enqueue descendants for
-		// RootPanel.BuildStyleRules — without that, PanelStyle.activeRules on
-		// each descendant never refreshes, so value-only rule changes (e.g.
-		// width: 200px → width: 80px on .button1) never reach their YogaNode.
-		// Visible symptom: edits don't apply until the user adds/removes a
-		// class on the panel (e.g. .selected), because Panel.AddClass calls
-		// StyleSelectorsChanged(true,true) which IS the missing enqueue.
-		// Toggling a sentinel class on root reaches the same path for the
-		// whole tree (StyleSelectorsChanged walks descendants when
-		// descendants:true). The class is removed before next layout so it
-		// never affects rule matching.
+		// bd memory: stylesheet-restyle-bug. Sentinel class toggle forces BuildStyleRules walk.
 		root.AddClass( ForceRestyleClass );
 		root.RemoveClass( ForceRestyleClass );
 
@@ -178,9 +145,7 @@ public class DesignerWindow : Widget
 
 	private const string ForceRestyleClass = "__rd_force_restyle__";
 
-	// Wipe + re-create the live mirror under root. Document.MoveTo mutates
-	// Children lists but doesn't touch LivePanel; without DeleteChildren here,
-	// every reorder layers new panels on top of stale ones. Clears selection.
+	// Wipe + re-create the live mirror under root. Clears selection.
 	private void RepopulateMirror()
 	{
 		if ( _document is null ) return;
@@ -242,16 +207,9 @@ public class DesignerWindow : Widget
 	{
 		_selection.Select( record );
 		_inspector.SetTarget( record );
-		// Tree row is already highlighted by the user click — calling
-		// _hierarchy.Highlight here would feed back into ItemSelected.
+		// Don't Highlight: row is already selected by the click; would feed back via ItemSelected.
 	}
 
-	// Surgical ClassName commit: swap the live panel's CSS class, refresh the
-	// chrome label (which mirrors ClassName for empty containers), re-apply the
-	// preview stylesheet (selector text changed → hash-guard won't early-exit),
-	// and trigger a hierarchy repaint. Skips RepopulateMirror entirely — saves
-	// 2 MirrorRecord + 3 SetTarget + 3 LengthControlWidget ctors per rename per
-	// VALIDATION-PASS-2 measurement.
 	private void OnInspectorClassNameChanged( ControlRecord record, string oldClassName )
 	{
 		if ( record is null ) return;
@@ -267,9 +225,6 @@ public class DesignerWindow : Widget
 				live.AddClass( record.ClassName );
 		}
 
-		// Container chrome label displays ClassName when the container is
-		// empty — UpdateChromeLabel is idempotent and re-creates the label
-		// with the new text.
 		if ( ControlMetadata.Get( record.Type ).IsContainer )
 		{
 			RefreshChromeLabelText( record );
@@ -279,9 +234,7 @@ public class DesignerWindow : Widget
 		_hierarchy?.NodeChanged( record );
 	}
 
-	// UpdateChromeLabel only creates/removes the marker; it doesn't update the
-	// text on an existing label. After a rename we need the existing label to
-	// pick up the new ClassName.
+	// UpdateChromeLabel creates/removes; this updates the existing label's text after rename.
 	private void RefreshChromeLabelText( ControlRecord record )
 	{
 		if ( record?.LivePanel is null || !record.LivePanel.IsValid ) return;
@@ -295,7 +248,7 @@ public class DesignerWindow : Widget
 		}
 	}
 
-	// RepopulateMirror clears selection. Re-establish focus on `record`.
+	// RepopulateMirror clears selection; re-establish focus.
 	private void RepopulateAndFocus( ControlRecord record )
 	{
 		RepopulateMirror();
@@ -319,8 +272,7 @@ public class DesignerWindow : Widget
 		DeleteRecordCascade( record );
 	}
 
-	// Snapshot at copy time: subsequent edits to the source must not bleed
-	// into pastes, so store a fresh clone (not a live reference).
+	// Clone at copy time so subsequent edits to source don't bleed into pastes.
 	private void OnHierarchyCopyRequested( ControlRecord record )
 	{
 		if ( record is null || record == _document.RootRecord ) return;
@@ -328,8 +280,7 @@ public class DesignerWindow : Widget
 		Log.Info( $"{LogPrefix} Copy {record.ClassName} -> clipboard" );
 	}
 
-	// Container target -> append as last child; leaf target -> next sibling.
-	// Re-clones each paste so each produces a distinct subtree.
+	// Container target appends as last child; leaf target inserts as next sibling.
 	private void OnHierarchyPasteRequested( ControlRecord target )
 	{
 		if ( _document.Clipboard is null || target is null ) return;
@@ -359,8 +310,7 @@ public class DesignerWindow : Widget
 		DeleteRecordCascade( record );
 	}
 
-	// Capture parent BEFORE delete so we can re-chrome it if it becomes empty.
-	// FindParent returns null only for RootRecord, which DeleteSelected rejects.
+	// Capture parent before delete so we can re-chrome it if it becomes empty.
 	private void DeleteRecordCascade( ControlRecord record )
 	{
 		var parent = _document.FindParent( record );
@@ -392,15 +342,12 @@ public class DesignerWindow : Widget
 		}
 	}
 
-	// Sandbox.UI.Button and Sandbox.UI.TextEntry live in the `base` addon, which
-	// isn't loaded into the editor process where tool addons run. Saved .razor
-	// emits real <button>/<textentry> tags via DocumentSerializer; preview
-	// substitutes Label with a `.preview-*` marker class for visual identity.
+	// Sandbox.UI.Button/TextEntry live in `base` (not loaded in editor); preview substitutes Label.
 	private void MirrorRecord( ControlRecord record, Sandbox.UI.Panel liveParent )
 	{
 		if ( liveParent is null || !liveParent.IsValid )
 		{
-			Log.Warning( $"{LogPrefix} MirrorRecord: liveParent not valid — record {record.ClassName} has no live mirror" );
+			Log.Warning( $"{LogPrefix} MirrorRecord: liveParent not valid; record {record.ClassName} has no live mirror" );
 			return;
 		}
 
@@ -460,10 +407,7 @@ public class DesignerWindow : Widget
 		UpdateChromeLabel( record );
 	}
 
-	// Idempotent: ensures `record`'s LivePanel has exactly one
-	// `.preview-chrome-label` child iff it is a non-root container with no
-	// record children. Empty containers show their ClassName so designers can
-	// match preview boxes to hierarchy entries.
+	// Idempotent: empty non-root containers get exactly one .preview-chrome-label child.
 	private void UpdateChromeLabel( ControlRecord record )
 	{
 		if ( record is null ) return;
@@ -514,7 +458,7 @@ public class DesignerWindow : Widget
 			dialog.SetFindFile();
 			dialog.SetModeSave();
 			dialog.SetNameFilter( "Razor (*.razor)" );
-			// SelectedFile is read-only; SelectFile() prefills the name field.
+			// SelectedFile is read-only; SelectFile prefills the name field.
 			dialog.SelectFile( "MyMenu.razor" );
 
 			if ( !dialog.Execute() )

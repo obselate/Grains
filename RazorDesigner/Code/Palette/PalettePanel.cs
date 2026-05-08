@@ -34,8 +34,7 @@ public class PalettePanel : Widget
 			: base( type.ToString(), ControlMetadata.Get( type ).IconName, parent )
 		{
 			_type = type;
-			// Without IsDraggable, Widget's drag-detection never fires
-			// OnDragStart — the press is consumed as a click.
+			// Required: without it, press is consumed as a click and OnDragStart never fires.
 			IsDraggable = true;
 		}
 
