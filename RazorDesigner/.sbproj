@@ -1,0 +1,19 @@
+{
+  "Title": "Razor Designer",
+  "Type": "tool",
+  "Org": "local",
+  "Ident": "grains_razordesigner",
+  "Schema": 1,
+  "IncludeSourceFiles": false,
+  "Resources": null,
+  "PackageReferences": [],
+  "EditorReferences": null,
+  "Mounts": null,
+  "IsStandaloneOnly": false,
+  "Metadata": {
+    "Compiler": {
+      "TreatWarningsAsErrors": true
+    },
+    "ProjectTemplate": null
+  }
+}

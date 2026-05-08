@@ -1,0 +1,12 @@
+# s&box editor-generated, regenerated on project load
+.sbox/
+Libraries/
+ProjectSettings/
+**/Code/Properties/
+**/Code/*.csproj
+*.slnx
+
+# IDE
+.vs/
+.vscode/
+.idea/
