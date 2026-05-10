@@ -1,0 +1,137 @@
+/*
+  GitHub dark (default) — sourced from primer/primitives.
+    canvas-default     #0d1117
+    canvas-subtle      #161b22
+    canvas-inset       #010409
+    border-default     #30363d
+    border-muted       #21262d
+    fg-default         #e6edf3
+    fg-muted           #7d8590
+    accent-fg          #2f81f7
+    accent-emphasis    #1f6feb
+    accent-subtle      rgba(56, 139, 253, 0.15)
+*/
+
+.root { color: #e6edf3; font-family: Inter; }
+label { color: #e6edf3; }
+
+.button {
+  background-color: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 5px 16px;
+  color: #e6edf3;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  font-weight: 500;
+  box-shadow: 0 0 transparent;
+}
+.button:hover {
+  background-color: #30363d;
+  border-color: #8b949e;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.textentry {
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 5px 12px;
+  color: #e6edf3;
+  min-height: 28px;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) inset;
+}
+.textentry.placeholder { color: #6e7681; }
+
+.checkbox {
+  flex-direction: row;
+  align-items: center;
+  color: #e6edf3;
+  cursor: pointer;
+}
+.checkbox > .checkmark {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #30363d;
+  border-radius: 3px;
+  margin-right: 8px;
+  color: transparent;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background-color: #161b22;
+}
+.checkbox.is-checked > .checkmark {
+  color: #ffffff;
+  background-color: #1f6feb;
+  border-color: #1f6feb;
+}
+
+.iconpanel, i {
+  font-family: Material Icons;
+  font-size: 18px;
+  color: #e6edf3;
+  align-items: center;
+  justify-content: center;
+}
+
+/* === Stand-ins ====================================================== */
+
+.preview-panel {
+  border: 1px solid #30363d;
+  background-color: #161b22;
+  min-height: 28px;
+}
+
+.preview-buttongroup {
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  min-height: 32px;
+}
+
+.preview-dropdown {
+  background-color: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  min-height: 32px;
+  position: relative;
+}
+.preview-dropdown > .inner {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 32px;
+  background-color: #0d1117;
+  border-left: 1px solid #30363d;
+  align-items: center;
+  justify-content: center;
+  color: #2f81f7;
+}
+
+.preview-form {
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  min-height: 60px;
+  padding: 12px;
+}
+
+.preview-field {
+  background-color: rgba(0, 0, 0, 0);
+  border: none;
+  border-bottom: 1px solid #21262d;
+  min-height: 32px;
+  padding: 6px 0;
+}
+
+.preview-fieldcontrol {
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  min-height: 28px;
+  flex-grow: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) inset;
+}
