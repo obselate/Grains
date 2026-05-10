@@ -1215,24 +1215,19 @@ public class DesignerWindow : Widget
 
 	// Image.SetTexture(string) is hard-wired to FileSystem.Mounted (Assets/-rooted), which rejects
 	// "..". The picker (FilePathStringControlWidget) emits Path.GetRelativePath(Assets, abs) so any
-	// file outside Assets/ becomes "../foo.png". We bypass Mounted: resolve to absolute via
-	// Project.Current.GetAssetsPath() anchor, read bytes, build a Texture in-memory.
+	// file outside Assets/ becomes "../foo.png". We bypass Mounted: resolve to absolute, read bytes,
+	// build a Texture in-memory. Resolution walks Project.Current's Assets/ first (handles user picks
+	// and ".." relative paths), then loaded library projects' Assets/ so bundled paths like
+	// "imageimports/card/card-article.png" resolve from xaz.razordesigner on a fresh consumer install.
 	private static Texture LoadImageTexture( string source )
 	{
 		if ( string.IsNullOrEmpty( source ) ) return null;
 		try
 		{
-			var assetsRoot = Project.Current?.GetAssetsPath();
-			if ( string.IsNullOrEmpty( assetsRoot ) )
+			var abs = ResolveImagePath( source );
+			if ( string.IsNullOrEmpty( abs ) )
 			{
-				Log.Warning( $"{LogPrefix} LoadImageTexture: Project.Current has no assets path" );
-				return null;
-			}
-
-			var abs = System.IO.Path.GetFullPath( source, assetsRoot );
-			if ( !System.IO.File.Exists( abs ) )
-			{
-				Log.Warning( $"{LogPrefix} Image source not found on disk: {abs} (from \"{source}\")" );
+				Log.Warning( $"{LogPrefix} Image source not found in Project.Current or any loaded library Assets/: \"{source}\"" );
 				return null;
 			}
 
@@ -1244,6 +1239,29 @@ public class DesignerWindow : Widget
 			Log.Warning( e, $"{LogPrefix} LoadImageTexture failed for \"{source}\": {e.Message}" );
 			return null;
 		}
+	}
+
+	// Try Project.Current's Assets/ first, then every other loaded project's Assets/. First file
+	// that exists wins. Returns null if nothing matches.
+	private static string ResolveImagePath( string source )
+	{
+		var primary = Project.Current?.GetAssetsPath();
+		if ( !string.IsNullOrEmpty( primary ) )
+		{
+			var abs = System.IO.Path.GetFullPath( source, primary );
+			if ( System.IO.File.Exists( abs ) ) return abs;
+		}
+
+		foreach ( var p in EditorUtility.Projects.GetAll() )
+		{
+			if ( p == Project.Current ) continue;
+			var assets = p.GetAssetsPath();
+			if ( string.IsNullOrEmpty( assets ) || !System.IO.Directory.Exists( assets ) ) continue;
+			var abs = System.IO.Path.GetFullPath( source, assets );
+			if ( System.IO.File.Exists( abs ) ) return abs;
+		}
+
+		return null;
 	}
 
 	// `local.base` is a PackageReference, so Button/TextEntry/NumberEntry/Checkbox/IconPanel
