@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "name": "InfoCard",
+  "name": "ExampleCard",
   "icon": "add_box",
   "wrappedInContainer": false,
   "roots": [
@@ -119,7 +119,7 @@
               "content": "",
               "placeholder": "",
               "checkboxSize": "16px",
-              "source": "imageimports/card/card-article.png",
+              "source": "razordesigner/card/card-article.png",
               "iconName": "",
               "overrideTypography": false,
               "fontFamily": "",
@@ -408,7 +408,7 @@
         },
         {
           "type": "Panel",
-          "className": "panel8",
+          "className": "panel5",
           "width": "auto",
           "height": "auto",
           "direction": "Row",
@@ -457,7 +457,7 @@
           "children": [
             {
               "type": "Panel",
-              "className": "Separator",
+              "className": "panel6",
               "width": "80%",
               "height": "1px",
               "direction": "Row",
@@ -509,7 +509,7 @@
         },
         {
           "type": "Panel",
-          "className": "panel9",
+          "className": "panel7",
           "width": "auto",
           "height": "auto",
           "direction": "Row",
