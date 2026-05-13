@@ -1,0 +1,153 @@
+/*
+  Razor Designer docs — github-dark token overrides for Material for MkDocs.
+  Palette sourced from xaz.razordesigner/Assets/Themes/github-dark.scss
+  (primer/primitives).
+*/
+
+:root {
+  --rd-canvas-default:  #0d1117;
+  --rd-canvas-subtle:   #161b22;
+  --rd-canvas-inset:    #010409;
+  --rd-border-default:  #30363d;
+  --rd-border-muted:    #21262d;
+  --rd-fg-default:      #e6edf3;
+  --rd-fg-muted:        #7d8590;
+  --rd-fg-subtle:       #6e7681;
+  --rd-accent-fg:       #2f81f7;
+  --rd-accent-emphasis: #1f6feb;
+  --rd-accent-subtle:   rgba(56, 139, 253, 0.15);
+  --rd-success-fg:      #3fb950;
+  --rd-danger-fg:       #f85149;
+  --rd-attention-fg:    #d29922;
+}
+
+/* === Dark scheme (slate) — github-dark =============================== */
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color:           var(--rd-canvas-default);
+  --md-default-bg-color--light:    var(--rd-canvas-subtle);
+  --md-default-bg-color--lighter:  var(--rd-border-muted);
+  --md-default-bg-color--lightest: var(--rd-border-default);
+  --md-default-fg-color:           var(--rd-fg-default);
+  --md-default-fg-color--light:    var(--rd-fg-default);
+  --md-default-fg-color--lighter:  var(--rd-fg-muted);
+  --md-default-fg-color--lightest: var(--rd-fg-subtle);
+
+  --md-primary-fg-color:           var(--rd-canvas-subtle);
+  --md-primary-fg-color--light:    var(--rd-canvas-subtle);
+  --md-primary-fg-color--dark:     var(--rd-canvas-inset);
+  --md-primary-bg-color:           var(--rd-fg-default);
+  --md-primary-bg-color--light:    var(--rd-fg-muted);
+
+  --md-accent-fg-color:            var(--rd-accent-fg);
+  --md-accent-fg-color--transparent: var(--rd-accent-subtle);
+  --md-accent-bg-color:            #ffffff;
+  --md-accent-bg-color--light:     var(--rd-fg-default);
+
+  --md-typeset-color:              var(--rd-fg-default);
+  --md-typeset-a-color:            var(--rd-accent-fg);
+  --md-typeset-mark-color:         var(--rd-accent-subtle);
+  --md-typeset-del-color:          rgba(248, 81, 73, 0.15);
+  --md-typeset-ins-color:          rgba(63, 185, 80, 0.15);
+
+  --md-code-bg-color:              var(--rd-canvas-inset);
+  --md-code-fg-color:              var(--rd-fg-default);
+  --md-code-hl-color:              var(--rd-accent-subtle);
+
+  --md-footer-bg-color:            var(--rd-canvas-inset);
+  --md-footer-bg-color--dark:      #000000;
+  --md-footer-fg-color:            var(--rd-fg-default);
+  --md-footer-fg-color--light:     var(--rd-fg-muted);
+  --md-footer-fg-color--lighter:  var(--rd-fg-subtle);
+}
+
+/* === Light scheme (default) — github-light-ish ======================= */
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:           #ffffff;
+  --md-primary-fg-color--light:    #f6f8fa;
+  --md-primary-fg-color--dark:     #d0d7de;
+  --md-primary-bg-color:           #1f2328;
+
+  --md-accent-fg-color:            var(--rd-accent-emphasis);
+  --md-accent-fg-color--transparent: rgba(31, 111, 235, 0.1);
+
+  --md-typeset-a-color:            var(--rd-accent-emphasis);
+  --md-footer-bg-color:            #1f2328;
+}
+
+/* === Shared polish =================================================== */
+
+.md-header,
+.md-tabs {
+  background-color: var(--rd-canvas-subtle);
+  border-bottom: 1px solid var(--rd-border-default);
+  box-shadow: 0 1px 0 var(--rd-border-muted);
+}
+
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-tabs {
+  color: var(--rd-fg-default);
+}
+
+[data-md-color-scheme="slate"] .md-search__input {
+  background-color: var(--rd-canvas-default);
+  border: 1px solid var(--rd-border-default);
+  color: var(--rd-fg-default);
+}
+[data-md-color-scheme="slate"] .md-search__input::placeholder {
+  color: var(--rd-fg-subtle);
+}
+
+[data-md-color-scheme="slate"] .md-typeset code {
+  background-color: var(--rd-canvas-subtle);
+  border: 1px solid var(--rd-border-muted);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+
+[data-md-color-scheme="slate"] .md-typeset pre > code {
+  background-color: var(--rd-canvas-inset);
+  border: 1px solid var(--rd-border-muted);
+  border-radius: 6px;
+}
+
+[data-md-color-scheme="slate"] .md-typeset blockquote {
+  border-left: 0.25rem solid var(--rd-accent-emphasis);
+  color: var(--rd-fg-muted);
+}
+
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) {
+  border: 1px solid var(--rd-border-default);
+}
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) th {
+  background-color: var(--rd-canvas-subtle);
+  color: var(--rd-fg-default);
+  border-bottom: 1px solid var(--rd-border-default);
+}
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) tr {
+  border-top: 1px solid var(--rd-border-muted);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .admonition,
+[data-md-color-scheme="slate"] .md-typeset details {
+  background-color: var(--rd-canvas-subtle);
+  border: 1px solid var(--rd-border-default);
+  border-left-width: 0.25rem;
+  border-radius: 6px;
+}
+
+[data-md-color-scheme="slate"] .md-nav__link:focus,
+[data-md-color-scheme="slate"] .md-nav__link:hover {
+  color: var(--rd-accent-fg);
+}
+
+[data-md-color-scheme="slate"] .md-button--primary {
+  background-color: var(--rd-accent-emphasis);
+  border-color: var(--rd-accent-emphasis);
+  color: #ffffff;
+}
+[data-md-color-scheme="slate"] .md-button--primary:hover {
+  background-color: var(--rd-accent-fg);
+  border-color: var(--rd-accent-fg);
+}

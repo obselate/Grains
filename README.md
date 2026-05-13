@@ -6,4 +6,4 @@
 
 | Project | Type | Description |
 | --- | --- | --- |
-| [Razor Designer](xaz.razordesigner/) | Library | In-editor visual designer for `.razor` UI panels — drag-and-drop palette, hierarchy, live canvas, and inspector. Saves `.razor` + `.razor.scss` pairs. |
+| [Razor Designer](xaz.razordesigner/) | Library | In-editor visual designer for `.razor` UI panels — drag-and-drop palette, hierarchy, live canvas, and inspector. Saves `.razor` + `.razor.scss` pairs. [Docs](https://obselate.github.io/Grains/) |
