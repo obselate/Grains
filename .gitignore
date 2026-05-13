@@ -12,3 +12,7 @@ ProjectSettings/
 .vs/
 .vscode/
 .idea/
+
+# MkDocs build output
+site/
+.cache/
